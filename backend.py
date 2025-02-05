@@ -1,13 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-import datetime
 import os
+import datetime
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+
+# Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///users.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your_secret_key')
+
 db = SQLAlchemy(app)
 
 # Models
@@ -34,9 +37,13 @@ def signup():
         password = request.form['password']
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         new_user = User(username=username, password_hash=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        return redirect(url_for('login'))
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            return f"An error occurred: {str(e)}"
     return render_template('signup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -48,6 +55,8 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
             return redirect(url_for('dashboard'))
+        else:
+            return "Invalid username or password."
     return render_template('login.html')
 
 @app.route('/dashboard')
@@ -68,9 +77,13 @@ def submit_test():
     user_id = session['user_id']
     score = sum(int(request.json[f'question_{i}']) for i in range(1, 21))
     new_score = ConsciousnessScore(user_id=user_id, score=score)
-    db.session.add(new_score)
-    db.session.commit()
-    return jsonify({'message': 'Test submitted successfully'})
+    try:
+        db.session.add(new_score)
+        db.session.commit()
+        return jsonify({'message': 'Test submitted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/get_scores', methods=['GET'])
 def get_scores():
@@ -81,7 +94,8 @@ def get_scores():
     data = [{'date': score.date.strftime('%Y-%m-%d'), 'score': score.score} for score in scores]
     return jsonify(data)
 
+# Initialize database if not already created
 if __name__ == '__main__':
-    if not os.path.exists('users.db'):
+    with app.app_context():
         db.create_all()
     app.run(debug=True)
