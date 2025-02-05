@@ -100,8 +100,11 @@ def get_scores():
     data = [{'date': score.date.strftime('%Y-%m-%d'), 'score': score.score} for score in scores]
     return jsonify(data)
 
-# Initialize database if not already created
-if __name__ == '__main__':
+# Ensure tables are created on startup
+@app.before_first_request
+def create_tables():
     with app.app_context():
         db.create_all()
+
+if __name__ == '__main__':
     app.run(debug=True)
