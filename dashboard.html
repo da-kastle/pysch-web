@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Welcome to Your Dashboard</h1>
+    <form id="testForm">
+        <h2>Conscientiousness Test</h2>
+        <div id="questions">
+            <!-- Add your 20 questions here -->
+            <div>
+                <label for="question_1">Question 1:</label>
+                <input type="number" name="question_1" min="1" max="5" required>
+            </div>
+        </div>
+        <button type="submit">Submit Test</button>
+    </form>
+    <canvas id="resultsChart"></canvas>
+    <script>
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            formData.forEach((value, key) => { data[key] = value; });
+            const response = await fetch('/submit_test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (response.ok) {
+                alert('Test submitted!');
+                fetchScores();
+            }
+        });
+
+        async function fetchScores() {
+            const response = await fetch('/get_scores');
+            const data = await response.json();
+            const labels = data.map(entry => entry.date);
+            const scores = data.map(entry => entry.score);
+
+            const ctx = document.getElementById('resultsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Conscientiousness Scores',
+                        data: scores,
+                        borderColor: 'blue',
+                        fill: false
+                    }]
+                }
+            });
+        }
+
+        fetchScores();
+    </script>
+</body>
+</html>
