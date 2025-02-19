@@ -31,6 +31,12 @@ class ConsciousnessScore(db.Model):
     date = db.Column(db.Date, default=datetime.date.today)
     score = db.Column(db.Integer, nullable=False)
 
+# Ensure tables are created on startup
+@app.before_first_request
+def create_tables():
+    with app.app_context():
+        db.create_all()
+
 # Routes
 @app.route('/')
 def index():
@@ -100,11 +106,6 @@ def get_scores():
     data = [{'date': score.date.strftime('%Y-%m-%d'), 'score': score.score} for score in scores]
     return jsonify(data)
 
-# Ensure tables are created on startup
-@app.before_first_request
-def create_tables():
-    with app.app_context():
-        db.create_all()
-
+# Run the app
 if __name__ == '__main__':
     app.run(debug=True)
