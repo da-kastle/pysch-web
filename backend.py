@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import datetime
+import re
 
 app = Flask(__name__)
 
@@ -17,6 +18,7 @@ db = SQLAlchemy(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
 
     def set_password(self, password):
@@ -24,6 +26,14 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+# Helper function for email validation
+def is_valid_email(email):
+    return re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email)
+
+# Helper function for password validation
+def is_valid_password(password):
+    return len(password) >= 8 and any(char.isdigit() for char in password) and any(char.isupper() for char in password)
 
 class ConsciousnessScore(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -44,8 +54,16 @@ def index():
 def signup():
     if request.method == 'POST':
         username = request.form['username']
+        email = request.form['email']
         password = request.form['password']
-        user = User(username=username)
+        
+        if not is_valid_email(email):
+            return "Invalid email format. Please enter a valid email."
+        
+        if not is_valid_password(password):
+            return "Password must be at least 8 characters long, contain at least one number, and one uppercase letter."
+        
+        user = User(username=username, email=email)
         user.set_password(password)
         try:
             db.session.add(user)
