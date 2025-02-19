@@ -32,10 +32,8 @@ class ConsciousnessScore(db.Model):
     score = db.Column(db.Integer, nullable=False)
 
 # Ensure tables are created on startup
-@app.before_first_request
-def create_tables():
-    with app.app_context():
-        db.create_all()
+with app.app_context():
+    db.create_all()
 
 # Routes
 @app.route('/')
